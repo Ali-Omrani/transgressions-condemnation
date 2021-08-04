@@ -58,8 +58,8 @@ _LICENSE = ""
 # The HuggingFace dataset library don't host the datasets but only point to the original files
 # This can be an arbitrary nested dict/list of URLs (see below in `_split_generators` method)
 _URLs = {
-    'first_domain': "../joes_transgression_ambiguity_project/data/annotated_tweets/ta_tweets.jsonl",
-    'second_domain': "https://huggingface.co/great-new-dataset-second_domain.zip",
+    'condemnation': "ta_tweets.jsonl"
+    # 'second_domain': "https://huggingface.co/great-new-dataset-second_domain.zip",
 }
 
 
@@ -81,28 +81,29 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
     # data = datasets.load_dataset('my_dataset', 'first_domain')
     # data = datasets.load_dataset('my_dataset', 'second_domain')
     BUILDER_CONFIGS = [
-        datasets.BuilderConfig(name="first_domain", version=VERSION, description="This part of my dataset covers a first domain"),
-        datasets.BuilderConfig(name="second_domain", version=VERSION, description="This part of my dataset covers a second domain"),
+        datasets.BuilderConfig(name="condemnation", version=VERSION, description="This part of my dataset covers a first domain"),
+        # datasets.BuilderConfig(name="second_domain", version=VERSION, description="This part of my dataset covers a second domain"),
     ]
 
-    DEFAULT_CONFIG_NAME = "first_domain"  # It's not mandatory to have a default configuration. Just use one if it make sense.
+    DEFAULT_CONFIG_NAME = "condemnation"  # It's not mandatory to have a default configuration. Just use one if it make sense.
 
     def _info(self):
+        print("in info")
         # TODO: This method specifies the datasets.DatasetInfo object which contains informations and typings for the dataset
-        if self.config.name == "first_domain":  # This is the name of the configuration selected in BUILDER_CONFIGS above
+        if self.config.name == "condemnation":  # This is the name of the configuration selected in BUILDER_CONFIGS above
             #'text', 'meta', '_input_hash', '_task_hash', 'label', 'score', 'priority', 'spans', '_session_id', '_view_id', 'answer'
             features = datasets.Features(
                 {
                     "text": datasets.Value("string"),
-                    "meta": datasets.Value("string"), #todo: fix to dict
-                    "_input_hash": datasets.Value("int64"),
-                    "_task_hash": datasets.Value("int64"),
-                    "label": datasets.Value("string"),
-                    "score": datasets.Value("float64"),
-                    "priority": datasets.Value("float64"),
+                    # "meta": datasets.Value("string"), #todo: fix to dict
+                    # "_input_hash": datasets.Value("int64"),
+                    # "_task_hash": datasets.Value("int64"),
+                    # "label": datasets.Value("string"),
+                    # "score": datasets.Value("float64"),
+                    # "priority": datasets.Value("float64"),
                     #"spans": datasets.Value("list(int)"),
-                    "_session_id": datasets.Value("string"),
-                    "_view_id": datasets.Value("string"),
+                    # "_session_id": datasets.Value("string"),
+                    # "_view_id": datasets.Value("string"),
                     "answer": datasets.Value("string")
                     # These are the features of your dataset like images, labels ...
                 }
@@ -142,15 +143,16 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
         # It can accept any type or nested list/dict and will give back the same structure with the url replaced with path to local files.
         # By default the archives will be extracted and a path to a cached folder where they are extracted is returned instead of the archive
         #TODO:  Ali fix this
-        my_urls = _URLs[self.config.name]
-        data_dir = dl_manager.download_and_extract(my_urls)
-#        data_dir = "../joes_transgression_ambiguity_project/data/annotated_tweets/ta_tweets.jsonl"
+        # my_urls = _URLs[self.config.name]
+
+        # data_dir = dl_manager.download_and_extract(my_urls)
+        data_dir = "my_dataset_loading_script"
         return [
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN,
                 # These kwargs will be passed to _generate_examples
                 gen_kwargs={
-                    "filepath": os.path.join(data_dir, "train.jsonl"),
+                    "filepath": os.path.join(data_dir, "ta_tweets.jsonl"),
                     "split": "train",
                 },
             ),
@@ -158,7 +160,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.TEST,
                 # These kwargs will be passed to _generate_examples
                 gen_kwargs={
-                    "filepath": os.path.join(data_dir, "test.jsonl"),
+                    "filepath": os.path.join(data_dir, "ta_tweets.jsonl"),
                     "split": "test"
                 },
             ),
@@ -166,7 +168,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.VALIDATION,
                 # These kwargs will be passed to _generate_examples
                 gen_kwargs={
-                    "filepath": os.path.join(data_dir, "dev.jsonl"),
+                    "filepath": os.path.join(data_dir, "ta_tweets.jsonl"),
                     "split": "dev",
                 },
             ),
@@ -178,15 +180,16 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
         """ Yields examples as (key, example) tuples. """
         # This method handles input defined in _split_generators to yield (key, example) tuples from the dataset.
         # The `key` is here for legacy reason (tfds) and is not important in itself.
-
+        print("filepath", filepath)
         with open(filepath, encoding="utf-8") as f:
             for id_, row in enumerate(f):
                 data = json.loads(row)
-                if self.config.name == "first_domain":
+                print(data)
+                if self.config.name == "condemnation":
                     yield id_, {
-                        "sentence": data["sentence"],
-                        "option1": data["option1"],
-                        "answer": "" if split == "test" else data["answer"],
+                        "text": data["text"],
+                        "answer": data["answer"],
+                        # "answer": "" if split == "test" else data["answer"],
                     }
                 else:
                     yield id_, {
