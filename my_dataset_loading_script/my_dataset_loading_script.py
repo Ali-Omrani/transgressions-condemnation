@@ -58,7 +58,7 @@ _LICENSE = ""
 # The HuggingFace dataset library don't host the datasets but only point to the original files
 # This can be an arbitrary nested dict/list of URLs (see below in `_split_generators` method)
 _URLs = {
-    'condemnation': "ta_tweets.jsonl"
+    'condemnation': "nour_jillian_condemnation_r2_to_r7_maj_vote.jsonl"
     # 'second_domain': "https://huggingface.co/great-new-dataset-second_domain.zip",
 }
 
@@ -88,7 +88,6 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
     DEFAULT_CONFIG_NAME = "condemnation"  # It's not mandatory to have a default configuration. Just use one if it make sense.
 
     def _info(self):
-        print("in info")
         # TODO: This method specifies the datasets.DatasetInfo object which contains informations and typings for the dataset
         if self.config.name == "condemnation":  # This is the name of the configuration selected in BUILDER_CONFIGS above
             #'text', 'meta', '_input_hash', '_task_hash', 'label', 'score', 'priority', 'spans', '_session_id', '_view_id', 'answer'
@@ -98,13 +97,13 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                     # "meta": datasets.Value("string"), #todo: fix to dict
                     # "_input_hash": datasets.Value("int64"),
                     # "_task_hash": datasets.Value("int64"),
-                    # "label": datasets.Value("string"),
+                    "label": datasets.Value("int64"),
                     # "score": datasets.Value("float64"),
                     # "priority": datasets.Value("float64"),
                     #"spans": datasets.Value("list(int)"),
                     # "_session_id": datasets.Value("string"),
                     # "_view_id": datasets.Value("string"),
-                    "answer": datasets.Value("string")
+                    # "answer": datasets.Value("string")
                     # These are the features of your dataset like images, labels ...
                 }
             )
@@ -152,7 +151,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.TRAIN,
                 # These kwargs will be passed to _generate_examples
                 gen_kwargs={
-                    "filepath": os.path.join(data_dir, "ta_tweets.jsonl"),
+                    "filepath": os.path.join(data_dir, "nour_jillian_condemnation_r2_to_r7_maj_vote.jsonl"),
                     "split": "train",
                 },
             ),
@@ -160,7 +159,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.TEST,
                 # These kwargs will be passed to _generate_examples
                 gen_kwargs={
-                    "filepath": os.path.join(data_dir, "ta_tweets.jsonl"),
+                    "filepath": os.path.join(data_dir, "nour_jillian_condemnation_r2_to_r7_maj_vote.jsonl"),
                     "split": "test"
                 },
             ),
@@ -168,7 +167,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.VALIDATION,
                 # These kwargs will be passed to _generate_examples
                 gen_kwargs={
-                    "filepath": os.path.join(data_dir, "ta_tweets.jsonl"),
+                    "filepath": os.path.join(data_dir, "nour_jillian_condemnation_r2_to_r7_maj_vote.jsonl"),
                     "split": "dev",
                 },
             ),
@@ -184,11 +183,10 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
         with open(filepath, encoding="utf-8") as f:
             for id_, row in enumerate(f):
                 data = json.loads(row)
-                print(data)
                 if self.config.name == "condemnation":
                     yield id_, {
                         "text": data["text"],
-                        "answer": data["answer"],
+                        "label": data["label"],
                         # "answer": "" if split == "test" else data["answer"],
                     }
                 else:
