@@ -146,6 +146,13 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
 
         # data_dir = dl_manager.download_and_extract(my_urls)
         data_dir = "my_dataset_loading_script"
+        file_name = "nour_jillian_condemnation_r2_to_r7_maj_vote.jsonl"
+        def create_train_test(data_dir, file_name):
+            file_path = os.path.join(data_dir, file_name )
+
+        create_train_test(data_dir, file_name)
+
+
         return [
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN,
