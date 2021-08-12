@@ -25,6 +25,7 @@ The datasets is aimed at building two classifiers.
 import csv
 import json
 import os
+import pandas as pd
 
 import datasets
 
@@ -97,7 +98,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                     # "meta": datasets.Value("string"), #todo: fix to dict
                     # "_input_hash": datasets.Value("int64"),
                     # "_task_hash": datasets.Value("int64"),
-                    "label": datasets.Value("int64"),
+                    "label": datasets.ClassLabel(names=["no_condemnation", "condemnation"])
                     # "score": datasets.Value("float64"),
                     # "priority": datasets.Value("float64"),
                     #"spans": datasets.Value("list(int)"),
@@ -146,11 +147,6 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
 
         # data_dir = dl_manager.download_and_extract(my_urls)
         data_dir = "my_dataset_loading_script"
-        file_name = "nour_jillian_condemnation_r2_to_r7_maj_vote.jsonl"
-        def create_train_test(data_dir, file_name):
-            file_path = os.path.join(data_dir, file_name )
-
-        create_train_test(data_dir, file_name)
 
 
         return [
@@ -158,7 +154,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.TRAIN,
                 # These kwargs will be passed to _generate_examples
                 gen_kwargs={
-                    "filepath": os.path.join(data_dir, "nour_jillian_condemnation_r2_to_r7_maj_vote.jsonl"),
+                    "filepath": os.path.join(data_dir, "condemnation_train.csv"),
                     "split": "train",
                 },
             ),
@@ -166,18 +162,18 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.TEST,
                 # These kwargs will be passed to _generate_examples
                 gen_kwargs={
-                    "filepath": os.path.join(data_dir, "nour_jillian_condemnation_r2_to_r7_maj_vote.jsonl"),
+                    "filepath": os.path.join(data_dir, "condemnation_test.csv"),
                     "split": "test"
                 },
             ),
-            datasets.SplitGenerator(
-                name=datasets.Split.VALIDATION,
-                # These kwargs will be passed to _generate_examples
-                gen_kwargs={
-                    "filepath": os.path.join(data_dir, "nour_jillian_condemnation_r2_to_r7_maj_vote.jsonl"),
-                    "split": "dev",
-                },
-            ),
+            # datasets.SplitGenerator(
+            #     name=datasets.Split.VALIDATION,
+            #     # These kwargs will be passed to _generate_examples
+            #     gen_kwargs={
+            #         "filepath": os.path.join(data_dir, "nour_jillian_condemnation_r2_to_r7_maj_vote.jsonl"),
+            #         "split": "dev",
+            #     },
+            # ),
         ]
 
     def _generate_examples(
@@ -187,19 +183,29 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
         # This method handles input defined in _split_generators to yield (key, example) tuples from the dataset.
         # The `key` is here for legacy reason (tfds) and is not important in itself.
         print("filepath", filepath)
-        with open(filepath, encoding="utf-8") as f:
-            for id_, row in enumerate(f):
-                data = json.loads(row)
-                if self.config.name == "condemnation":
-                    yield id_, {
-                        "text": data["text"],
-                        "label": data["label"],
-                        # "answer": "" if split == "test" else data["answer"],
-                    }
-                else:
-                    yield id_, {
-                        "sentence": data["sentence"],
-                        "option2": data["option2"],
-                        "second_domain_answer": "" if split == "test" else data["second_domain_answer"],
-                    }
+        dataset_df = pd.read_csv(filepath)
+        for id_, data in dataset_df.iterrows():
+            if self.config.name == "condemnation":
+                yield id_, {
+                    "text": data["text"],
+                    "label": data["label"],
+                    # "answer": "" if split == "test" else data["answer"],
+                }
+
+    # with open(filepath, encoding="utf-8") as f:
+        #     for id_, row in enumerate(f):
+        #         data = row
+        #         print(data)
+        #         if self.config.name == "condemnation":
+        #             yield id_, {
+        #                 "text": data["text"],
+        #                 "label": data["label"],
+        #                 # "answer": "" if split == "test" else data["answer"],
+        #             }
+        #         else:
+        #             yield id_, {
+        #                 "sentence": data["sentence"],
+        #                 "option2": data["option2"],
+        #                 "second_domain_answer": "" if split == "test" else data["second_domain_answer"],
+        #             }
 
