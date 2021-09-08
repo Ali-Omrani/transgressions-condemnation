@@ -5,6 +5,8 @@ __pycache__/
 
 # Project Specifics
 severity/data
+severity/severity_dumps
+*.csv
 # C extensions
 *.so
 
