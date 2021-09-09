@@ -83,7 +83,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
     # data = datasets.load_dataset('my_dataset', 'second_domain')
     BUILDER_CONFIGS = [
         datasets.BuilderConfig(name="severity", version=VERSION, description="This part of dataset addresses the severity of condemnation annotations"),
-        # datasets.BuilderConfig(name="second_domain", version=VERSION, description="This part of my dataset covers a second domain"),
+        datasets.BuilderConfig(name="severity_4_cat", version=VERSION, description="severity ratings collapsed to 4 cats"),
     ]
 
     DEFAULT_CONFIG_NAME = "condemnation"  # It's not mandatory to have a default configuration. Just use one if it make sense.
@@ -98,10 +98,27 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                     # "meta": datasets.Value("string"), #todo: fix to dict
                     # "_input_hash": datasets.Value("int64"),
                     # "_task_hash": datasets.Value("int64"),
-                    "rounded_avg_severity": datasets.Value("int64"),
+                    "label": datasets.Value("int64"),
                     # "score": datasets.Value("float64"),
                     # "priority": datasets.Value("float64"),
                     #"spans": datasets.Value("list(int)"),
+                    # "_session_id": datasets.Value("string"),
+                    # "_view_id": datasets.Value("string"),
+                    # "answer": datasets.Value("string")
+                    # These are the features of your dataset like images, labels ...
+                }
+            )
+        elif self.config.name == "severity_4_cat":
+            features = datasets.Features(
+                {
+                    "text": datasets.Value("string"),
+                    # "meta": datasets.Value("string"), #todo: fix to dict
+                    # "_input_hash": datasets.Value("int64"),
+                    # "_task_hash": datasets.Value("int64"),
+                    "label": datasets.Value("int64"),
+                    # "score": datasets.Value("float64"),
+                    # "priority": datasets.Value("float64"),
+                    # "spans": datasets.Value("list(int)"),
                     # "_session_id": datasets.Value("string"),
                     # "_view_id": datasets.Value("string"),
                     # "answer": datasets.Value("string")
@@ -146,7 +163,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
         # my_urls = _URLs[self.config.name]
 
         # data_dir = dl_manager.download_and_extract(my_urls)
-        data_dir = ""
+        data_dir = "severity_dataset_loading_script"
 
 
         return [
@@ -154,7 +171,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.TRAIN,
                 # These kwargs will be passed to _generate_examples
                 gen_kwargs={
-                    "filepath": os.path.join(data_dir, "severity_train.csv"),
+                    "filepath": os.path.join(data_dir, "severity_4_cat_train.csv"),
                     "split": "train",
                 },
             ),
@@ -162,7 +179,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.TEST,
                 # These kwargs will be passed to _generate_examples
                 gen_kwargs={
-                    "filepath": os.path.join(data_dir, "severity_test.csv"),
+                    "filepath": os.path.join(data_dir, "severity_4_cat_test.csv"),
                     "split": "test"
                 },
             ),
@@ -184,8 +201,16 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
         # The `key` is here for legacy reason (tfds) and is not important in itself.
         print("filepath", filepath)
         dataset_df = pd.read_csv(filepath)
+        print(dataset_df)
+        # dataset_df = dataset_df.rename(columns={"rounded_avg_severity":"label"})
         for id_, data in dataset_df.iterrows():
-            if self.config.name == "condemnation":
+            if self.config.name == "severity":
+                yield id_, {
+                    "text": data["text"],
+                    "label": data["rounded_avg_severity"],
+                    # "answer": "" if split == "test" else data["answer"],
+                }
+            elif self.config.name == "severity_4_cat":
                 yield id_, {
                     "text": data["text"],
                     "label": data["rounded_avg_severity"],
