@@ -171,7 +171,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.TRAIN,
                 # These kwargs will be passed to _generate_examples
                 gen_kwargs={
-                    "filepath": os.path.join(data_dir, "severity_4_cat_train.csv"),
+                    "filepath": os.path.join(data_dir, "severity_3_cat_train.csv"),
                     "split": "train",
                 },
             ),
@@ -179,7 +179,7 @@ class CondemnationDataset(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.TEST,
                 # These kwargs will be passed to _generate_examples
                 gen_kwargs={
-                    "filepath": os.path.join(data_dir, "severity_4_cat_test.csv"),
+                    "filepath": os.path.join(data_dir, "severity_3_cat_test.csv"),
                     "split": "test"
                 },
             ),
