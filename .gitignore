@@ -1,10 +1,13 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+
 *.py[cod]
 *$py.class
 
 # Project Specifics
 severity/data
+*.p
+*.txt
 severity/severity_dumps
 *.csv
 # C extensions
