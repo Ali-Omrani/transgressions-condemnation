@@ -7,12 +7,12 @@
 
 # setup
 library(tweetscores)
-dropbox <- here::here("data/outputs")
+data_dir <- here::here("poli_account_followers/")
 outfolder <- 'followers-lists-202008/'
-outfolderPath <- file.path(dropbox, outfolder)
+outfolderPath <- file.path(data_dir, outfolder)
 dir.create(outfolderPath, showWarnings = FALSE)
 polsfile <- "accounts-twitter-data-2020-08.csv"
-oauth_folder <- here::here("data/auth/twitter_app_aouth - Sheet1.csv")
+oauth_folder <- here::here("poli_account_followers/twitter_app_aouth - Sheet1.csv")
 
 
 ## scraping list of social media accounts for Members of the US Congress

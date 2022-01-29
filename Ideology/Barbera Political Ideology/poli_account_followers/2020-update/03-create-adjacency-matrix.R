@@ -10,7 +10,7 @@ outfolder <- 'followers-lists-202008'
 tabname <- 'followers202008'
 rstabname <- 'edgelist202008'
 usermatrix <- 'adjmatrix202008'
-dropbox <- here::here("data/outputs")
+dropbox <- here::here("poli_account_followers/")
 
 ######################################################################
 ## upload follower files to Google Cloud Storage
@@ -27,26 +27,30 @@ write_upload <- function(input, output){
 }
 
 # reading files and uploading to GCloudStorage
-fls <- list.files(paste0(dropbox, 'data/tweetscores/', outfolder))
+fls <- list.files(paste0(dropbox, outfolder))
 
 # checking those not uploaded yet
 done <- gcs_list_objects("tweetscores", prefix=outfolder)$name
-done <- paste0(gsub(".*/(.*).csv", done, repl="\\1"), ".rdata")
+done <- paste0(gsub(".*/(.*).csv", fls, repl="\\1"), ".rdata")
 fls <- fls[fls %in% done == FALSE]
 
 # uploading new files
 for (f in fls){
   message(f)
   message(which(fls==f), '/', length(fls))
-  load(paste0(dropbox, 'data/tweetscores/', outfolder, '/', f))
+  load(paste0(dropbox, outfolder, '/', f))
   account <- gsub("(.*).rdata", f, repl="\\1")
   df <- data.frame(
     account = account,
     id_str = followers,
     stringsAsFactors = FALSE
   )
-  gcs_upload(df, bucket="tweetscores", name=paste0(outfolder, '/', account, '.csv'),
-           predefinedAcl="bucketOwnerFullControl", object_function = write_upload)
+  
+  #gcs_upload(df, bucket="tweetscores", name=paste0(outfolder, '/', account, '.csv'),
+   #        predefinedAcl="bucketOwnerFullControl", object_function = write_upload)
+  file.name <- paste0(dropbox, 
+                      outfolder, "csvs" account, ".csv")
+  save(followers, file=file.name)
 }
 
 ######################################################################
