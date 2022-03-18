@@ -8,6 +8,8 @@ __pycache__/
 severity/data
 *.p
 *.txt
+*.Rda
+*.zip
 severity/severity_dumps
 *.csv
 # C extensions

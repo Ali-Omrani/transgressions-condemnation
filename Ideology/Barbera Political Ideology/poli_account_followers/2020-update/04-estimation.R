@@ -13,37 +13,52 @@ library(Matrix)
 # params
 folder <- 'followers-lists-202008'
 usermatrix <- 'adjmatrix202008'
-dropbox <- "~/Dropbox/"
 resultsfile <- 'ca-results-202008'
-accountstable <- "phi202008"
-usertable <- 'theta202008'
+folder <- 'followers-lists-202008'
+#tabname <- 'followers202008'
+#rstabname <- 'edgelist202008'
+usermatrix <- 'adjacency_460_poli_accounts.csv'
+dropbox <- here::here("poli_account_followers/")
 
 #==============================================================================
 ## ESTIMATION: FIRST STAGE W/CORRESPONDENCE ANALYSIS
 #==============================================================================
 
 # loading data
-load(paste0(dropbox, 'data/tweetscores/', usermatrix, '.rdata'))
+adj_matrix = read.csv(paste0(dropbox, usermatrix))
+row_names = adj_matrix$X #user_ids
+adj_matrix = subset(adj_matrix, select = -c(X) )
+mat_nonzero <- which(adj_matrix != 0, arr.ind = T)  
+
+
+# creating a sparse matrix
+library(Matrix)
+y <- sparseMatrix(i=mat_nonzero[,"row"], j=mat_nonzero[,"col"])
+
+all_attrs = attributes(adj_matrix)
+rownames(y) <- row_names
+colnames(y) <- all_attrs$names # political accounts
+
 
 ## subsetting matrix: only those who follow 3+ MCs to help 
 ## identify latent ideological space
 congress <- readr::read_csv(paste0(dropbox, 
-                          "data/tweetscores/accounts-twitter-data-2020-08.csv"),
+                          "/accounts-twitter-data-2020-08.csv"),
                             col_types = "ccccciiiccccccccccc")
 included <- tolower(congress$screen_name)[congress$type == "Congress"]
 supcol <- which(tolower(colnames(y)) %in% included == FALSE)
 colnames(y)[supcol] ## these will be excluded
 
 # fitting CA model with reduced matrix
-res <- CA(y, nd=3, supcol=supcol)
-
-save(res, file=paste0(dropbox, 'tweetscores/', resultsfile, '.rdata'))
+#res <- CA(y, nd=3, supcol=supcol)
+res <- CA(y)
+save(res, file=paste0(dropbox, resultsfile, '.rdata'))
 
 #==============================================================================
 ## SANITY CHECKS
 #==============================================================================
 
-load(paste0(dropbox, 'data/tweetscores/', resultsfile, '.rdata'))
+load(paste0(dropbox, resultsfile, '.rdata'))
 congress <- readr::read_csv(paste0(dropbox, 
                           "data/tweetscores/accounts-twitter-data-2020-08.csv"),
                             col_types = "ccccciiiccccccccccc")
@@ -61,7 +76,8 @@ tail(congress[order(congress$phi),])
 
 # primary candidates
 congress <- congress[order(congress$phi),]
-congress[congress$type=="Primary Candidate",c("screen_name", "phi")]
+#congress[congress$type=="Primary Candidate",c("screen_name", "phi")]
+cogress_estimates = congress[congress$type=="Congress",c("screen_name", "phi")]
 
 # NOTE: this is before applying user-level normalization (adding ~ 0.5)
 
@@ -126,7 +142,7 @@ congress[congress$type=="Other Politicians",c("screen_name", "phi")]
 
 # validation
 library(dplyr)
-dwnom <- readr::read_csv(paste0(dropbox, 'data/tweetscores/HS116_members.csv'))
+dwnom <- read.csv(here::here("./HS116_members.csv"))
 dwnom <- merge(dwnom, congress[,c("bioid", "phi")], 
                by.x='bioguide_id', by.y='bioid')
 
@@ -268,3 +284,24 @@ partisans <- users[users$party %in% c(1,2) & users$accounts_followed>=10,]
 cm <- table(partisans$theta>0, partisans$party==2)
 sum(diag(cm))/sum(cm)
 # 0.8224001
+
+
+
+# --------------------Ali--------------------------
+user_ideology_estimates = res$rowcoord[,1]
+poli_ideology_estimates = res$colcoord[,1]
+
+hist(user_ideology_estimates,main="User Estimated Ideologies",
+     xlab="standard deviation compared to average person",
+     col="darkmagenta")
+
+hist(poli_ideology_estimates,main="Political Account Estimated Ideologies",
+     xlab="standard deviation compared to average person",
+     col="blue")
+
+# creating a df with only user_id and user_estimate
+poli_estimate_df = data.frame("user_id"=res$rownames, "estimate_ours"=res$rowcoord[,1])
+
+#sampling rows from our estimate
+sampled_poli_estimate_df = poli_estimate_df[sample(nrow(poli_estimate_df),1000),]
+
