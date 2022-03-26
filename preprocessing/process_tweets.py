@@ -3,11 +3,15 @@ import nltk
 import json
 import gzip
 import os
+import pickle
+import unidecode
 import pprint
 from datetime import datetime
 from tqdm import tqdm
 from dateutil.parser import parse
 from pymongo import MongoClient
+import pandas as pd
+from names_dataset import NameDataset
 from pymongo.errors import BulkWriteError, CursorNotFound
 import pymongo
 
@@ -18,11 +22,20 @@ class TweetPreprocessor():
         self.client = MongoClient()
         self.db_metoo_tweets = self.client["new_metoo"]
         self.metoo_tweets = self.db_metoo_tweets.metoo_tweets
+        self.namedb = NameDataset()
 
     def get_new_client(self):
         self.client = MongoClient()
         self.db_metoo_tweets = self.client["new_metoo"]
         self.metoo_tweets = self.db_metoo_tweets.metoo_tweets
+
+    def pickle_db(self, save_path="data/data.p", query={"is_RT":True}):
+        cursor = self.metoo_tweets.find(query)
+        list_cur = list(cursor)
+        df = pd.DataFrame(list_cur)
+        file = open(save_path, 'wb')
+        pickle.dump(df, file)
+        file.close()
 
     def push_tweets_to_db(self):
         tweets = self.read_tweets(self.files)
@@ -30,25 +43,12 @@ class TweetPreprocessor():
         user_data = {}
         for tweet in tqdm(tweets):
             cur_tweet_data, user_data = self.process_tweet(tweet, user_data)
-            i += 1
-            #     if i%10000==0:
-            #         print(i)
             if cur_tweet_data is not None:
-
                 try:
                     temp = self.metoo_tweets.insert_one(cur_tweet_data)
-                #             temp = metoo_tweets.find_one_and_update({"tweet_id" : str(cur_tweet_data["tweet_id"])}, {"$set":
-                #         {"favoritesCount": cur_tweet_data["favoritesCount"]}
-                #     },upsert=True)
-                #             print(temp["favoritesCount"])
-                #             if temp["favoritesCount"]==0:
-                #                 print(tweet["link"])
-                #                 print(temp["tweet_id"])
-
                 except:
                    self.get_new_client()
-                    # temp2 = metoo_tweets.find_one_and_update({"tweet_id" : str(cur_tweet_data["tweet_id"])}, {"$set":
-            # {"favoritesCount": cur_tweet_data["favoritesCount"]}})
+                   temp = self.metoo_tweets.insert_one(cur_tweet_data)
 
     def read_tweets(self, files):
         n_files = len(files)
@@ -169,6 +169,59 @@ class TweetPreprocessor():
             pass
 
         return (cur_tweet_data, user_data)
+
+    def validate_name(self, text, cur_targets, target_dic, target_last_names):
+        """
+            returns a list of targets that have been mentioned in a text by either first name, last name, or handle
+
+                splits the text by " " or "," or "-" then for each target for each token
+                1. if it's a mention (starts with @) checks if it matches target handle then target is validated
+                2. if it includes either first name or last name of target  then target is validated
+                3. if it includes the exclusion list then target is not validated and we move to next target
+        """
+        try:
+            split_text = re.split(' |-|,', text.lower())
+            valid = None
+            valid_targets = []
+
+            for cur_target in cur_targets:
+                for i, token in enumerate(split_text):
+                    if cur_target in token:
+
+                        if split_text[i - 1] in target_dic[cur_target]['other_exclude']:
+                            valid = 0
+                            break
+
+                        if token.startswith('@'):
+                            if target_dic[cur_target]['handle'] == token:
+                                valid = 1
+                            else:
+                                valid = 0
+                            break
+
+                        if split_text[i - 1] in target_dic[cur_target]['fn']:
+                            valid = 1
+                            break
+
+                        if split_text[i - 1] in target_last_names:
+                            valid = 1
+                            break
+
+                        if not token.startswith('@'):
+                            if not self.namedb.search_first_name(unidecode.unidecode(split_text[i - 1])):
+                                valid = 1
+                            else:
+                                valid = 0
+                            break
+
+                if valid == 1:
+                    valid_targets.append(cur_target)
+
+            return (valid_targets)
+
+
+        except:
+            return []
 
 
 def main():
