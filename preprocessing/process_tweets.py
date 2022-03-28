@@ -12,18 +12,52 @@ from dateutil.parser import parse
 from pymongo import MongoClient
 import pandas as pd
 from names_dataset import NameDataset
+# from whatthelang import WhatTheLang
+
 from pymongo.errors import BulkWriteError, CursorNotFound
 import pymongo
 
 class TweetPreprocessor():
-    def __init__(self, tweet_data_path):
+    def __init__(self, tweet_data_path, all_targets_list, target_dic):
         self.tweet_data_path = tweet_data_path
         self.files = os.listdir(self.tweet_data_path)
         self.client = MongoClient()
         self.db_metoo_tweets = self.client["new_metoo"]
         self.metoo_tweets = self.db_metoo_tweets.metoo_tweets
         self.namedb = NameDataset()
+        self.all_targets_list = all_targets_list
+        self.target_dic = target_dic # ln, fn, handle
+        self.set_target_regex_dic()
+        self.target_last_names = [self.target_dic[k]['ln'] for k in self.target_dic.keys()]
+        self.target_gold_name =  {}
+        for k in self.targ_dic.keys():
+            self.target_gold_name[k] = self.targ_dic[k].pattern.split('|')[0].title()
+        # self.wtl = WhatTheLang()
 
+
+    def set_target_regex_dic(self):
+        print("building target regex")
+        self.targ_dic = {}
+        for target in self.all_targets_list:
+            if len(target)==2:
+                target = target[0] # to choose the right element from the list
+            try:
+                split_targ = target.split('_')
+                k = split_targ[-1]
+                if 'harvey' in split_targ:
+                    k = 'harvey_weinstein'
+
+                if 'bob' in split_targ and 'weinstein' in split_targ:
+                    k = 'bob_weinstein'
+                    self.targ_dic[k] = re.compile('|'.join(['bob weinstein', 'bobweinstein', 'bob']), re.IGNORECASE)
+
+                self.targ_dic[k] = re.compile('|'.join([' '.join(split_targ)] + split_targ[1:] + [''.join(split_targ)]),
+                                         re.IGNORECASE)
+            except:
+                pass
+
+        self.targ_dic['ck'] = re.compile('|'.join(['louis ck', 'louis c.k.', 'louisck', 'louisc.k.']), re.IGNORECASE)
+        self.targ_dic['moore'] = re.compile('|'.join(['roy moore', 'roymoore', 'moore']), re.IGNORECASE)
     def get_new_client(self):
         self.client = MongoClient()
         self.db_metoo_tweets = self.client["new_metoo"]
@@ -196,7 +230,7 @@ class TweetPreprocessor():
                     if split_text[i - 1] in target_last_names:
                         valid = 1
                     if not self.namedb.search_first_name(unidecode.unidecode(split_text[i - 1])):
-                        print("here with", split_text[i-1])
+                        # print("here with", split_text[i-1])
                         valid = 1
 
                     if split_text[i - 1] in target_dic[cur_target]['other_exclude']:
@@ -215,8 +249,8 @@ class TweetPreprocessor():
         text = text.lower()
 
         target_mentions = []
-
-        target_mentions = self.check_target(['metoo'], 'metoo', text, target_mentions)
+        #todo: fix
+        # target_mentions = self.check_target(['metoo'], 'metoo', text, target_mentions)
         target_mentions = self.check_target(['louis ck', 'louis c.k.', 'louisck'], 'louis_ck', text, target_mentions)
         target_mentions = self.check_target(['kirt webster'], 'kirt_webster', text, target_mentions)
         target_mentions = self.check_target(['nassar'], 'nassar', text, target_mentions)
@@ -244,7 +278,8 @@ class TweetPreprocessor():
         target_mentions = self.check_target(['grasham'], 'grasham', text, target_mentions)
         target_mentions = self.check_target(['wieseltier'], 'wieseltier', text, target_mentions)
         target_mentions = self.check_target(['knepper'], 'knepper', text, target_mentions)
-        target_mentions = self.check_target(['nelly'], 'nelly', text, target_mentions)
+        #todo: fix
+        # target_mentions = self.check_target(['nelly'], 'nelly', text, target_mentions)
         target_mentions = self.check_target(['ratner'], 'ratner', text, target_mentions)
         target_mentions = self.check_target(['ken baker', 'kenbaker'], 'ken_baker', text, target_mentions)
         target_mentions = self.check_target(['toback'], 'toback', text, target_mentions)
@@ -309,8 +344,8 @@ class TweetPreprocessor():
         if body_target_mentions:
             tweet['body_target_mentions_validated'] = self.validate_name(tweet['body'],
                                                                     body_target_mentions,
-                                                                    target_dic,
-                                                                    target_last_names)
+                                                                    self.target_dic,
+                                                                    self.target_last_names)
 
             if len(tweet['body_target_mentions_validated']) > 0:
                 tweet['body_target_mentions_validated_true'] = True
@@ -318,8 +353,8 @@ class TweetPreprocessor():
         if quoted_status_target_mentions:
             tweet['quoted_status_target_mentions_validated'] = self.validate_name(tweet['quoted_status_body'],
                                                                              quoted_status_target_mentions,
-                                                                             target_dic,
-                                                                             target_last_names)
+                                                                             self.target_dic,
+                                                                             self.target_last_names)
 
             if len(tweet['quoted_status_target_mentions_validated']) > 0:
                 tweet['quoted_status_target_mentions_validated_true'] = True
@@ -327,8 +362,8 @@ class TweetPreprocessor():
         if gnip_url_title_mentions:
             gnip_url_title_mentions_validated = [self.validate_name(i,
                                                                gnip_url_title_mentions,
-                                                               target_dic,
-                                                               target_last_names) for i in tweet['gnip_url_title']]
+                                                               self.target_dic,
+                                                               self.target_last_names) for i in tweet['gnip_url_title']]
 
             gnip_url_title_mentions_validated = list(set([i for j in gnip_url_title_mentions_validated for i in j]))
 
@@ -441,7 +476,8 @@ class TweetPreprocessor():
         initial_targ_counter = 0
 
         mask_map = {}
-
+        #print(targets)
+        targ_i = -1
         for targ_i, targ in enumerate(targets):
 
             cur_targ_split = targ.split('_')
@@ -461,15 +497,15 @@ class TweetPreprocessor():
                 continue
 
             # print(cur_targ == 'metoo')
-            mask_map[f"<TARGET {targ_i + 1}>"] = target_gold_name[cur_targ]
+            mask_map[f"<TARGET {targ_i + 1}>"] = self.target_gold_name[cur_targ]
 
             if initial_targ_counter == 0:
 
-                tweet['clean_tweet_masked'] = targ_dic[cur_targ].sub(f"<TARGET {targ_i + 1}>", clean_tweet)
+                tweet['clean_tweet_masked'] = self.targ_dic[cur_targ].sub(f"<TARGET {targ_i + 1}>", clean_tweet)
                 initial_targ_counter = 1
             else:
 
-                tweet['clean_tweet_masked'] = targ_dic[cur_targ].sub(f"<TARGET {targ_i + 1}>",
+                tweet['clean_tweet_masked'] = self.targ_dic[cur_targ].sub(f"<TARGET {targ_i + 1}>",
                                                                      tweet['clean_tweet_masked'])
 
         #         d['clean_tweet_masked'] = re.sub('')
@@ -493,13 +529,105 @@ class TweetPreprocessor():
         tweet = self.add_tweet_or_quoted_tweet(tweet)
         tweet = self.mask_tweets(tweet)
         return (tweet)
+
+    def mask_all_db(self):
+        print("masking all DB")
+        counter = 0
+
+        # for document in tqdm(self.metoo_tweets.find({'is_RT': True,
+        #                                    '$or': [{'body_target_mentions_validated_true': True},
+        #                                            {'quoted_status_target_mentions_validated_true': True},
+        #                                            {'gnip_url_title_mentions_validated_true': True},
+        #                                            {'body_target_mentions_validated_true': True}],
+        #                                    'lang_pred': 'en',
+        #                                    'lang_pred_prob': {'$gte': .3}})):
+        for document in tqdm(self.metoo_tweets.find({'is_RT': True})):
+
+            document = self.mask_targets_process(document)
+
+            self.metoo_tweets.update_one(
+                {'_id': document['_id']},
+                {'$set': document}
+            )
+
+
+
+            # counter += 1
+            #
+            # if counter % 10000 == 0:
+            #     print(counter)
+
+    def add_target_mentions_to_db(self):
+        print("adding target mentions to DB")
+        counter = 0
+
+        for document in tqdm(self.metoo_tweets.find({'is_RT': True})):
+            #Todo: fix lang prediction
+            # lang_pred = self.wtl.pred_prob(document['body'])
+            lang_pred = [[]]
+            if len(lang_pred[0]) > 0:
+
+                document['lang_pred'] = lang_pred[0][0][0]
+                document['lang_pred_prob'] = lang_pred[0][0][1]
+
+            else:
+                document['lang_pred'] = 'unknown'
+                document['lang_pred_prob'] = 0
+
+            document = self.process_tweet_targets(document)
+
+            try:
+                self.metoo_tweets.update_one(
+                    {'_id': document['_id']},
+                    {'$set': document}
+                )
+
+            except:
+                self.get_new_client()
+                self.metoo_tweets.update_one(
+                    {'_id': document['_id']},
+                    {'$set': document}
+                )
+
+            # counter += 1
+            #
+            # if counter % 10000 == 0:
+            #     print(counter)
+
+def get_all_targ_list(targs):
+    all_targets_list = []
+    for t_name in targs:
+
+        if not isinstance(t_name, str):
+            continue
+        if ("_" not in t_name):
+            print("bad {}".format(t_name))
+            all_targets_list.append(t_name)
+            continue
+            #     print(t_name)
+        if len(t_name.split("_")) != 2:
+            print("too long or too short", t_name)
+            all_targets_list.append([t_name, " ".join(t_name.split("_"))])
+            continue
+
+        first, last = t_name.split("_")
+        all_targets_list.append([t_name, " ".join([first, last])])
+    return all_targets_list
 def main():
     # steps that need to be done:
+    # clean the tweets - get target mentions - validate target mentions
+    # Add language Prediciton
+    # Adding time check
 
 
     targs = pd.read_csv('../../data/transgression_ambiguity_metoo_breaking_stimuli_all_targets.csv').target.values
-    # tweetPrep = TweetPreprocessor("/home/geev/datasets/metoo_oct_nov")
+    all_targets_list = get_all_targ_list(targs)
+    with open("../../data/target_dic.json", "r") as f:
+        target_dic = json.load(f)
+    print(target_dic)
+    tweetPrep = TweetPreprocessor("/home/geev/datasets/metoo_oct_nov", all_targets_list, target_dic)
     # tweetPrep.push_tweets_to_db()
-    print(targs)
+    #tweetPrep.add_target_mentions_to_db()
+    tweetPrep.mask_all_db()
 if __name__ == '__main__':
     main()
