@@ -1,13 +1,14 @@
 import re
 # import nltk
+import datetime
 import json
 import gzip
 import os
 import pickle
 import unidecode
 import pprint
-from datetime import datetime
 from tqdm import tqdm
+import numpy as np
 from dateutil.parser import parse
 from pymongo import MongoClient
 import pandas as pd
@@ -32,8 +33,111 @@ class TweetPreprocessor():
         self.target_gold_name =  {}
         for k in self.targ_dic.keys():
             self.target_gold_name[k] = self.targ_dic[k].pattern.split('|')[0].title()
+        self.build_target_article_dates()
         # self.wtl = WhatTheLang()
 
+
+    def build_target_article_dates(self, vox_data_path='../../data/vox_accusation_data.csv', window_days = 7):
+        """
+        sets self.target_date
+        builds a dictionary of the acceptable date range for each target
+        """
+        self.target_date = {}
+
+        for k in self.targ_dic.keys():
+            self.target_date[k] = {}
+            self.target_date[k]['name'] = self.targ_dic[k].pattern.split('|')[0].title().lower()
+
+        vox_data = pd.read_csv(vox_data_path)
+        vox_data['public_datetime'] = pd.to_datetime(vox_data.public_date, format='%B %d, %Y')
+        vox_data['name_string'] = vox_data.name.str.replace(' ', '_')
+
+        for k in self.target_date.keys():
+            time = vox_data[vox_data.name == self.target_date[k]['name']].public_datetime.values
+
+            time = (time - np.datetime64('1970-01-01')) / np.timedelta64(1, 's')
+            try:
+                time = datetime.datetime.utcfromtimestamp(time[0])
+                self.target_date[k]['min_date'] = time
+                self.target_date[k]['max_date'] = time + datetime.timedelta(days=window_days)
+            except:
+                pass
+                print("failed to build date for {}".format(k))
+                # print(k)
+
+        self.target_date['ck']['min_date'] = datetime.datetime.strptime('November 9, 2017', '%B %d, %Y')
+        self.target_date['ck']['max_date'] = datetime.datetime.strptime('November 9, 2017',
+                                                                   '%B %d, %Y') + datetime.timedelta(days=window_days)
+
+    def check_date(self, target, postedTime):
+        """
+        returns True/False
+        Checks if the posted time lies within acceptable window for the target
+        """
+        try:
+            if postedTime >= self.target_date[target]['min_date'] and postedTime <= self.target_date[target]['max_date']:
+                return (True)
+            else:
+                return (False)
+        except:
+            print("exception in check_date for {}".format(target))
+            return (None)
+
+    def check_target_dates(self, tweet):
+        """
+        Checks if the tweet is within time window of first articles of all targets mentioned in the tweet
+        """
+        targets = self.get_targets(tweet)
+        time_check = {}
+        for target in targets:
+            if target == 'metoo':
+                continue
+            else:
+
+                if 'weinstein' in target:
+                    if target == 'weinstein':
+                        target2 = 'harvey_weinstein'
+                    else:
+                        target2 = target
+                else:
+                    target2 = target.split('_')[-1]
+
+                #             elif target == 'roy_price':
+                #                 target2 = 'price'
+
+                #             elif target == 'louis_ck':
+                #                 target2 = 'ck'
+
+                #             elif target == 'kirt_webster':
+                #                 target2 = 'webster'
+
+                #             else:
+                #                 target2 = target
+
+                time_check[target] = {}
+                valid = self.check_date(target2, tweet['postedTime'])
+
+                if valid is None:
+                    return (None)
+
+                time_check[target]['valid'] = valid
+                time_check[target]['public_date'] = self.target_date[target2]['min_date']
+
+        tweet['time_check'] = time_check
+        return (tweet)
+
+    def get_targets(self, tweet):
+        targets = tweet['body_target_mentions']
+        try:
+            targets += tweet['quoted_status_target_mentions']
+        except:
+            pass
+        try:
+            targets += tweet['gnip_url_title_mentions']
+        except:
+            pass
+        targets = self.unique(targets)
+        return (targets)
 
     def set_target_regex_dic(self):
         print("building target regex")
@@ -545,10 +649,7 @@ class TweetPreprocessor():
 
             document = self.mask_targets_process(document)
 
-            self.metoo_tweets.update_one(
-                {'_id': document['_id']},
-                {'$set': document}
-            )
+            self.update_tweet_in_db(document)
 
 
 
@@ -576,23 +677,51 @@ class TweetPreprocessor():
 
             document = self.process_tweet_targets(document)
 
-            try:
-                self.metoo_tweets.update_one(
-                    {'_id': document['_id']},
-                    {'$set': document}
-                )
-
-            except:
-                self.get_new_client()
-                self.metoo_tweets.update_one(
-                    {'_id': document['_id']},
-                    {'$set': document}
-                )
+            self.update_tweet_in_db(document)
 
             # counter += 1
             #
             # if counter % 10000 == 0:
             #     print(counter)
+
+
+    def add_target_date_validation_to_db(self):
+        print("adding target date check to db")
+        for document in tqdm(self.metoo_tweets.find({'is_RT': True})):
+                                           # '$or': [{'body_target_mentions_validated_true': True},
+                                           #         {'quoted_status_target_mentions_validated_true': True}],
+                                           # 'lang_pred': 'en',
+                                           # 'lang_pred_prob': {'$gte': .3},
+                                           # 'time_check': {'$exists': False}}):
+
+            document = self.check_target_dates(document)
+
+            if document is None:
+                print("ERROR in add TARGET dates!")
+                break
+
+            self.update_tweet_in_db(document)
+
+
+
+
+
+    def update_tweet_in_db(self, document):
+
+        try:
+            self.metoo_tweets.update_one(
+                {'_id': document['_id']},
+                {'$set': document}
+            )
+
+        except:
+            self.get_new_client()
+            self.metoo_tweets.update_one(
+                {'_id': document['_id']},
+                {'$set': document}
+            )
+
+
 
 def get_all_targ_list(targs):
     all_targets_list = []
@@ -627,7 +756,8 @@ def main():
     print(target_dic)
     tweetPrep = TweetPreprocessor("/home/geev/datasets/metoo_oct_nov", all_targets_list, target_dic)
     # tweetPrep.push_tweets_to_db()
-    #tweetPrep.add_target_mentions_to_db()
-    tweetPrep.mask_all_db()
+    # tweetPrep.add_target_mentions_to_db()
+    # tweetPrep.mask_all_db()
+    # tweetPrep.add_target_date_validation_to_db()
 if __name__ == '__main__':
     main()

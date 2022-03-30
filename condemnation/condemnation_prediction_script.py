@@ -11,6 +11,9 @@ from datasets import Value
 from torch.utils.data import DataLoader
 import argparse
 import os
+from pymongo import MongoClient
+import IPython
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -18,7 +21,7 @@ def main():
     parser.add_argument('--model-path', default="")
     parser.add_argument('--prediciton-save-dir', default="results")
     parser.add_argument('--pretrained-model', default="bert-base-uncased")
-    parser.add_argument('--pred-data-path', default="../../data/5_mil_7days_metoo.p")
+    parser.add_argument('--pred-data-path', default="./temp/to_predict.p")
     args = parser.parse_args()
 
     checkpoint = args.pretrained_model
@@ -67,6 +70,26 @@ def main():
     with open(os.path.join(args.prediciton_save_dir, 'condemnation_predictions.p', 'wb')) as f:
         pickle.dump(predictions, f)
 
+def get_prediction_dataframe(db_name = "new_metoo", query = {"is_RT": True}):
+    client = MongoClient()
+    db_metoo_tweets = client[db_name]
+    metoo_tweets = db_metoo_tweets.metoo_tweets
+    cursor = metoo_tweets.find(query)
+    print("got cursor")
+    list_cur = list(cursor)
+    print("listed cursor")
+    df = pd.DataFrame(list_cur)
+    print("df generated")
+    if not os.path.exists("./temp"):
+        os.mkdir("temp")
+    with open("./temp/to_predict.p", "wb") as f:
+        pickle.dump(df, f)
+    print("saved df")
+    IPython.embed();
+    exit();
+
+
 
 if __name__ == "__main__":
-    main()
+    # main()
+    get_prediction_dataframe()
