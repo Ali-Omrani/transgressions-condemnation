@@ -13,6 +13,7 @@ import argparse
 import os
 from pymongo import MongoClient
 import IPython
+from tqdm import tqdm
 
 
 def main():
@@ -25,26 +26,17 @@ def main():
     args = parser.parse_args()
 
     checkpoint = args.pretrained_model
-    with open(args.pred_data_path, 'rb') as f:
-        pred_data = pickle.load(f)
-
-    pred_df = pred_data[["clean_tweet_masked"]].dropna()
-    pred_dataset = Dataset.from_pandas(pred_df)
-    pred_dataset = pred_dataset.rename_column("clean_tweet_masked", "text")
-
-    tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-
-    def tokenize_function(example):
-        return tokenizer(example["text"], truncation=True)
-
-    tokenized_datasets = pred_dataset.map(tokenize_function, batched=True)
-    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
-
     model_path = args.model_path
     model = torch.load(model_path)
     model.eval()
 
-    args = TrainingArguments(
+    tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+    def tokenize_function(example):
+        return tokenizer(example["text"], truncation=True)
+
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+
+    training_args = TrainingArguments(
         output_dir="exp/bart/results",
         do_train=False,
         do_eval=True,
@@ -52,44 +44,77 @@ def main():
         eval_steps=1000,
         num_train_epochs=1,
         per_device_train_batch_size=32,
-        per_device_eval_batch_size=8,
+        per_device_eval_batch_size=128,
         gradient_accumulation_steps=2,
         eval_accumulation_steps=1,
     )
-    training_args = TrainingArguments("test-trainer")
-    training_args.eval_accumulation_steps = 1  # pushes predictions out of GPU to mitigate GPU out of memory
+    # training_args = TrainingArguments("test-trainer")
+    # training_args.eval_accumulation_steps = 1  # pushes predictions out of GPU to mitigate GPU out of memory
 
     trainer = Trainer(
         model,
-        args=args,
+        args=training_args,
         data_collator=data_collator,
         tokenizer=tokenizer,
     )
-    predictions = trainer.predict(tokenized_datasets)
+    for pred_file in os.listdir(args.pred_data_path):
+        print("working on", pred_file)
+        with open(os.path.join(args.pred_data_path, pred_file), 'rb') as f:
+            pred_data = pickle.load(f)
 
-    with open(os.path.join(args.prediciton_save_dir, 'condemnation_predictions.p', 'wb')) as f:
-        pickle.dump(predictions, f)
+        pred_df = pred_data[["clean_tweet_masked"]].dropna()
+        pred_data = pred_data.dropna(subset=["clean_tweet_masked"])
+        pred_dataset = Dataset.from_pandas(pred_df)
+        pred_dataset = pred_dataset.rename_column("clean_tweet_masked", "text")
+
+        tokenized_datasets = pred_dataset.map(tokenize_function, batched=True)
+
+
+        predictions_logits = trainer.predict(tokenized_datasets)
+        preds = np.argmax(predictions_logits.predictions, axis = 1)
+
+        save_df = pred_data[["_id"]]
+        save_df["condemnation_prediction"] = preds
+        save_df["condemnation_logit_1"] = predictions_logits.predictions[:, 0]
+        save_df["condemnation_logit_1"] = predictions_logits.predictions[:, 1]
+
+        with open(os.path.join(args.prediciton_save_dir, 'condemnation_prediction_chunk_'+ pred_file.split("_")[-1]), 'wb') as f:
+            pickle.dump(save_df, f)
 
 def get_prediction_dataframe(db_name = "new_metoo", query = {"is_RT": True}):
+    def split_list(cursor, n):
+        result = []
+        for tweet in tqdm(cursor):
+            result.append(tweet)
+            if len(result)==n:
+                result_to_return = result
+                result = []
+                yield result_to_return
+        yield result
+
     client = MongoClient()
     db_metoo_tweets = client[db_name]
     metoo_tweets = db_metoo_tweets.metoo_tweets
     cursor = metoo_tweets.find(query)
     print("got cursor")
-    list_cur = list(cursor)
-    print("listed cursor")
-    df = pd.DataFrame(list_cur)
-    print("df generated")
-    if not os.path.exists("./temp"):
-        os.mkdir("temp")
-    with open("./temp/to_predict.p", "wb") as f:
-        pickle.dump(df, f)
-    print("saved df")
-    IPython.embed();
-    exit();
+    # list_cur = list(cursor)
+    # print("listed cursor")
+    for idx, chunk in tqdm(enumerate(split_list(cursor, 100000))):
+        df = pd.DataFrame(chunk)
+        with open("./temp/pred_chunk_{}.p".format(idx), "wb") as f:
+             pickle.dump(df, f)
+
+
+# print("df generated")
+    # if not os.path.exists("./temp"):
+    #     os.mkdir("temp")
+    # print("saved df")
+    # IPython.embed();
+    # exit();
 
 
 
 if __name__ == "__main__":
-    # main()
-    get_prediction_dataframe()
+    # params = --model-path ./models/fold_1_model.p --pred-data-path ./temp/
+    main()
+    # get_prediction_dataframe()
