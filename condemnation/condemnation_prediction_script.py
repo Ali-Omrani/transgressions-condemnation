@@ -75,7 +75,7 @@ def main():
 
         save_df = pred_data[["_id"]]
         save_df["condemnation_prediction"] = preds
-        save_df["condemnation_logit_1"] = predictions_logits.predictions[:, 0]
+        save_df["condemnation_logit_0"] = predictions_logits.predictions[:, 0]
         save_df["condemnation_logit_1"] = predictions_logits.predictions[:, 1]
 
         with open(os.path.join(args.prediciton_save_dir, 'condemnation_prediction_chunk_'+ pred_file.split("_")[-1]), 'wb') as f:
