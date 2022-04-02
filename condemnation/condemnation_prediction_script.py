@@ -105,6 +105,33 @@ def get_prediction_dataframe(db_name = "new_metoo", query = {"is_RT": True}):
              pickle.dump(df, f)
 
 
+def push_predictions_to_db(db_name = "new_metoo", pred_data_path = "./results" ):
+    client = MongoClient()
+    db_metoo_tweets = client[db_name]
+    metoo_tweets = db_metoo_tweets.metoo_tweets
+    def update_tweet_in_db( document):
+        try:
+            metoo_tweets.update_one(
+                {'_id': document['_id']},
+                {'$set': document}
+            )
+        except Exception:
+            print("couldn't update ", document)
+
+
+    for i, pred_file in enumerate(os.listdir(pred_data_path)):
+        print(i, "files pushed to DB")
+        if os.path.isdir(os.path.join(pred_data_path, pred_file)):
+            print("skipping directory {}".format(pred_file))
+            continue
+
+        with open(os.path.join(pred_data_path, pred_file), 'rb') as f:
+            pred_data = pickle.load(f)
+        for idx, row in tqdm(pred_data.iterrows()):
+            update_tweet_in_db(row.to_dict())
+
+
+
 # print("df generated")
     # if not os.path.exists("./temp"):
     #     os.mkdir("temp")
@@ -116,5 +143,6 @@ def get_prediction_dataframe(db_name = "new_metoo", query = {"is_RT": True}):
 
 if __name__ == "__main__":
     # params = --model-path ./models/fold_1_model.p --pred-data-path ./temp/
-    main()
     # get_prediction_dataframe()
+    # main()
+    push_predictions_to_db()

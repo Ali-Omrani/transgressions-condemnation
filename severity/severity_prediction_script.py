@@ -98,6 +98,6 @@ def main():
 
 if __name__ == "__main__":
     # params = --model-path ./models/fold_1_model.p --pred-data-path ../condemnation/results
-    os.listdir("../condemnation/results"))
+    os.listdir("../condemnation/results")
     IPython.embed(); exit();
     # main()
