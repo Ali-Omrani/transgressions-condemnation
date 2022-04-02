@@ -63,7 +63,7 @@ def main():
             print("skipping directory {}".format(pred_file))
             continue
 
-        save_file_path = os.path.join(args.prediciton_save_dir, 'condemnation_prediction_chunk_'+ pred_file.split("_")[-1])
+        save_file_path = os.path.join(args.prediciton_save_dir, 'severity_prediction_chunk_'+ pred_file.split("_")[-1])
 
         if os.path.exists(save_file_path):
             print("predictions for {} already exits".format(save_file_path))
@@ -89,15 +89,64 @@ def main():
         save_df["severity_logit_0"] = predictions_logits.predictions[:, 0]
         save_df["severity_logit_1"] = predictions_logits.predictions[:, 1]
         save_df["severity_logit_2"] = predictions_logits.predictions[:, 2]
-        IPython.embed(); exit();
         with open(save_file_path, 'wb') as f:
             pickle.dump(save_df, f)
 
 
+def get_prediction_dataframe(db_name = "new_metoo", query = {"is_RT": True, "condemnation_prediction": 1}):
+    def split_list(cursor, n):
+        result = []
+        for tweet in tqdm(cursor):
+            result.append(tweet)
+            if len(result)==n:
+                result_to_return = result
+                result = []
+                yield result_to_return
+        yield result
 
+    client = MongoClient()
+    db_metoo_tweets = client[db_name]
+    metoo_tweets = db_metoo_tweets.metoo_tweets
+    cursor = metoo_tweets.find(query)
+    print("got cursor")
+    # list_cur = list(cursor)
+    # print("listed cursor")
+    for idx, chunk in tqdm(enumerate(split_list(cursor, 100000))):
+        df = pd.DataFrame(chunk)
+        with open("./temp/pred_chunk_{}.p".format(idx), "wb") as f:
+             pickle.dump(df, f)
+
+def push_predictions_to_db(db_name = "new_metoo", pred_data_path = "./results" ):
+    client = MongoClient()
+    db_metoo_tweets = client[db_name]
+    metoo_tweets = db_metoo_tweets.metoo_tweets
+    def update_tweet_in_db( document):
+        try:
+            metoo_tweets.update_one(
+                {'_id': document['_id']},
+                {'$set': document}
+            )
+        except Exception:
+            print("couldn't update ", document)
+
+
+    for i, pred_file in enumerate(os.listdir(pred_data_path)):
+        print(i, "files pushed to DB")
+        if os.path.isdir(os.path.join(pred_data_path, pred_file)):
+            print("skipping directory {}".format(pred_file))
+            continue
+
+        with open(os.path.join(pred_data_path, pred_file), 'rb') as f:
+            pred_data = pickle.load(f)
+        for idx, row in tqdm(pred_data.iterrows()):
+            update_tweet_in_db(row.to_dict())
 
 if __name__ == "__main__":
-    # params = --model-path ./models/fold_1_model.p --pred-data-path ../condemnation/results
+    # params = --model-path ./models/fold_10_model.p --pred-data-path ./temp
     os.listdir("../condemnation/results")
-    IPython.embed(); exit();
-    # main()
+    print("generating prediction dataframes")
+    get_prediction_dataframe()
+    print("Predicting severity")
+    main()
+    print("pushing severity predictions to DB")
+    push_predictions_to_db()
