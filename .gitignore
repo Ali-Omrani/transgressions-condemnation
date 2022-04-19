@@ -17,6 +17,8 @@ severity/severity_dumps
 *.Rhistory
 *.DS_Store
 severity/test_trainer
+condemnation/test_trainer
+data/
 # C extensions
 *.so
 
