@@ -12,6 +12,11 @@ severity/data
 *.zip
 severity/severity_dumps
 *.csv
+*.rdata
+*.swp
+*.Rhistory
+*.DS_Store
+severity/test_trainer
 # C extensions
 *.so
 
