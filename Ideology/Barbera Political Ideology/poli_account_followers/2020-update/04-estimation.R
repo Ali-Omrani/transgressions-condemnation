@@ -17,7 +17,7 @@ resultsfile <- 'ca-results-202008'
 folder <- 'followers-lists-202008'
 #tabname <- 'followers202008'
 #rstabname <- 'edgelist202008'
-usermatrix <- 'adjacency_460_poli_accounts.csv'
+usermatrix <- 'user_id_adjacency_460_poli_accounts.csv'
 dropbox <- here::here("poli_account_followers/")
 
 #==============================================================================
@@ -25,7 +25,7 @@ dropbox <- here::here("poli_account_followers/")
 #==============================================================================
 
 # loading data
-adj_matrix = read.csv(paste0(dropbox, usermatrix))
+adj_matrix = read.csv("../user_id_adjacency_460_poli_accounts.csv")
 row_names = adj_matrix$X #user_ids
 adj_matrix = subset(adj_matrix, select = -c(X) )
 mat_nonzero <- which(adj_matrix != 0, arr.ind = T)  
@@ -42,8 +42,7 @@ colnames(y) <- all_attrs$names # political accounts
 
 ## subsetting matrix: only those who follow 3+ MCs to help 
 ## identify latent ideological space
-congress <- readr::read_csv(paste0(dropbox, 
-                          "/accounts-twitter-data-2020-08.csv"),
+congress <- readr::read_csv("../Barbera Political Ideology/poli_account_followers/accounts-twitter-data-2020-08.csv",
                             col_types = "ccccciiiccccccccccc")
 included <- tolower(congress$screen_name)[congress$type == "Congress"]
 supcol <- which(tolower(colnames(y)) %in% included == FALSE)
@@ -69,6 +68,7 @@ phi <- res$colcoord[,1]
 congress <- merge(congress, data.frame(
   merge=tolower(res$colnames), phi=phi, stringsAsFactors=F))
 congress$phi <- as.numeric(scale(congress$phi))
+
 
 # who is on the extremes
 head(congress[order(congress$phi),])
@@ -288,6 +288,31 @@ sum(diag(cm))/sum(cm)
 
 
 # --------------------Ali--------------------------
+
+adj_matrix = read.csv("../user_id_adjacency_460_poli_accounts.csv")
+row_names = adj_matrix$X #user_ids
+adj_matrix = subset(adj_matrix, select = -c(X) )
+
+mat_nonzero <- which(adj_matrix != 0, arr.ind = T)  
+
+
+# creating a sparse matrix
+library(Matrix)
+y <- sparseMatrix(i=mat_nonzero[,"row"], j=mat_nonzero[,"col"])
+
+all_attrs = attributes(adj_matrix)
+rownames(y) <- row_names
+colnames(y) <- all_attrs$names # political accounts
+
+
+## subsetting matrix: only those who follow 3+ MCs to help 
+## identify latent ideological space
+
+# fitting CA model with reduced matrix
+#res <- CA(y, nd=3, supcol=supcol)
+res <- CA(y)
+save(res, file="../../data/user_id_political_ideologies.rdata")
+
 user_ideology_estimates = res$rowcoord[,1]
 poli_ideology_estimates = res$colcoord[,1]
 

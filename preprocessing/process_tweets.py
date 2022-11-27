@@ -702,10 +702,6 @@ class TweetPreprocessor():
 
             self.update_tweet_in_db(document)
 
-
-
-
-
     def update_tweet_in_db(self, document):
 
         try:
