@@ -25,6 +25,10 @@ def main():
     parser.add_argument('--pred-data-path', default="./temp/to_predict.p")
     args = parser.parse_args()
 
+
+    # target_col = "clean_tweet_masked"
+    target_col = "full_text"
+
     checkpoint = args.pretrained_model
     model_path = args.model_path
     model = torch.load(model_path)
@@ -62,10 +66,10 @@ def main():
         with open(os.path.join(args.pred_data_path, pred_file), 'rb') as f:
             pred_data = pickle.load(f)
 
-        pred_df = pred_data[["clean_tweet_masked"]].dropna()
-        pred_data = pred_data.dropna(subset=["clean_tweet_masked"])
+        pred_df = pred_data[[target_col]].dropna()
+        pred_data = pred_data.dropna(subset=[target_col])
         pred_dataset = Dataset.from_pandas(pred_df)
-        pred_dataset = pred_dataset.rename_column("clean_tweet_masked", "text")
+        pred_dataset = pred_dataset.rename_column(target_col, "text")
 
         tokenized_datasets = pred_dataset.map(tokenize_function, batched=True)
 
@@ -81,7 +85,7 @@ def main():
         with open(os.path.join(args.prediciton_save_dir, 'condemnation_prediction_chunk_'+ pred_file.split("_")[-1]), 'wb') as f:
             pickle.dump(save_df, f)
 
-def get_prediction_dataframe(db_name = "new_metoo", query = {"is_RT": True}):
+def get_prediction_dataframe(db_name = "jason_twitter", query = {"is_RT": True}):
     def split_list(cursor, n):
         result = []
         for tweet in tqdm(cursor):
@@ -94,14 +98,39 @@ def get_prediction_dataframe(db_name = "new_metoo", query = {"is_RT": True}):
 
     client = MongoClient()
     db_metoo_tweets = client[db_name]
-    metoo_tweets = db_metoo_tweets.metoo_tweets
+    # metoo_tweets = db_metoo_tweets.metoo_tweets
+    metoo_tweets = db_metoo_tweets.tweets
     cursor = metoo_tweets.find(query)
     print("got cursor")
     # list_cur = list(cursor)
     # print("listed cursor")
     for idx, chunk in tqdm(enumerate(split_list(cursor, 100000))):
         df = pd.DataFrame(chunk)
-        with open("./temp/pred_chunk_{}.p".format(idx), "wb") as f:
+        with open("./temp-jason/pred_chunk_{}.p".format(idx), "wb") as f:
+             pickle.dump(df, f)
+
+def get_prediction_jason_dataframe(db_name = "jason_twitter", query = {}):
+    def split_list(cursor, n):
+        result = []
+        for tweet in tqdm(cursor):
+            result.append(tweet)
+            if len(result)==n:
+                result_to_return = result
+                result = []
+                yield result_to_return
+        yield result
+
+    client = MongoClient()
+    db_metoo_tweets = client[db_name]
+    # metoo_tweets = db_metoo_tweets.metoo_tweets
+    metoo_tweets = db_metoo_tweets.tweets
+    cursor = metoo_tweets.find(query)
+    print("got cursor")
+    # list_cur = list(cursor)
+    # print("listed cursor")
+    for idx, chunk in tqdm(enumerate(split_list(cursor, 100000))):
+        df = pd.DataFrame(chunk)
+        with open("./temp-jason/pred_chunk_{}.p".format(idx), "wb") as f:
              pickle.dump(df, f)
 
 
@@ -143,6 +172,6 @@ def push_predictions_to_db(db_name = "new_metoo", pred_data_path = "./results" )
 
 if __name__ == "__main__":
     # params = --model-path ./models/fold_1_model.p --pred-data-path ./temp/
-    # get_prediction_dataframe()
+    get_prediction_jason_dataframe()
     # main()
-    push_predictions_to_db()
+    # push_predictions_to_db()
