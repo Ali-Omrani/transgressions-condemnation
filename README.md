@@ -60,15 +60,27 @@ To add model predictions to all tweets in the database, run the code in `condemn
 -----------------------------
 
 ### $T2$: Categorizing condemnation severity of a tweet
-- training data
-- trainig code
-- performances
-- prediction code
+### **Training data**
+The raw data is available in `severity/severity_dumps/`. We averaged multiple annotator severity ratings (`mean_severity.csv`) and put them into three categories.
+-  [0-3]: severity = 0
+-  [4-6]: severity = 1
+-  [7-10]: severity = 2
+
+ The script `severity/severity_dataset_loading_script/severity_dataset_loading_script.py` creates a transformers dataset based from the data and splits into train and test.
+### **Training code**
+Training code with 10 fold CV is available `transgressions-condemnation/severity/severity_train.ipynb`
+
+### **Performances**
+### **Prediction Code**
 
 ------------------------------------
 
 ### $T3$: Estimating the ideology of a tweet's author
-- data
+To esimate the ideologies we rely on algorithm from Barbera et al.
+
+### **Data**
+To estimate the political ideology of a user ($u$) we need to to know which political accounts $u$ follows. Hence we crawled the following of a list of political accounts. The data is available 
+
 - estimation code
 - validation checks
 
