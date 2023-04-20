@@ -76,17 +76,27 @@ Training code with 10 fold CV is available `transgressions-condemnation/severity
 ------------------------------------
 
 ### $T3$: Estimating the ideology of a tweet's author
-To esimate the ideologies we rely on algorithm from Barbera et al.
+To esimate the ideologies we rely on algorithm from Barbera et al. 
 
 ### **Data**
-To estimate the political ideology of a user ($u$) we need to to know which political accounts $u$ follows. Hence we crawled the following of a list of political accounts. The data is available 
+To estimate the political ideology of a user ($u$) we need to to know which political accounts $u$ follows. Hence we crawled the following of a list of political accounts. For now we are using followers of 460 accounts available at `transgressions-condemnation/Ideology/460_account_followers.csv`. Using the `transgressions-condemnation/Ideology/new_ideology_data_prep.ipynb` we query our db and get only the users whose tweets include condemnation and construct the adjacency matrix.
 
 - estimation code
+
+use the `/home/geev/Research/Transgression/transgressions-condemnation/Ideology/Barbera Political Ideology/poli_account_followers/2020-update/04-estimation.R` with adjacency file created in the last step to get ideologies.
+
 - validation checks
 
 
 ## Regression and Analysis
 
 
+The Rmarkdown file `/transgressions-condemnation/stat_analysis/proof_of_concept_notebook.Rmd` includes the statistical analysis required for this project. 
 
+requires: 
+
+- csv file of tweets (with 1.user_id, condemnation, severity, like_count, retweet_count)
+- path to the saved ideology estimates
+
+runs a count models! 
 

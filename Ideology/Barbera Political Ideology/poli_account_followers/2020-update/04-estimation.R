@@ -25,7 +25,7 @@ dropbox <- here::here("poli_account_followers/")
 #==============================================================================
 
 # loading data
-adj_matrix = read.csv("../user_id_adjacency_460_poli_accounts.csv")
+adj_matrix = read.csv("/home/geev/Research/Transgression/transgressions-condemnation/Ideology/jason_adjacency_460_poli_accounts.csv")
 row_names = adj_matrix$X #user_ids
 adj_matrix = subset(adj_matrix, select = -c(X) )
 mat_nonzero <- which(adj_matrix != 0, arr.ind = T)  
@@ -42,7 +42,7 @@ colnames(y) <- all_attrs$names # political accounts
 
 ## subsetting matrix: only those who follow 3+ MCs to help 
 ## identify latent ideological space
-congress <- readr::read_csv("../Barbera Political Ideology/poli_account_followers/accounts-twitter-data-2020-08.csv",
+congress <- readr::read_csv("/home/geev/Research/Transgression/transgressions-condemnation/Ideology/Barbera Political Ideology/poli_account_followers/accounts-twitter-data-2020-08.csv",
                             col_types = "ccccciiiccccccccccc")
 included <- tolower(congress$screen_name)[congress$type == "Congress"]
 supcol <- which(tolower(colnames(y)) %in% included == FALSE)
@@ -51,7 +51,9 @@ colnames(y)[supcol] ## these will be excluded
 # fitting CA model with reduced matrix
 #res <- CA(y, nd=3, supcol=supcol)
 res <- CA(y)
-save(res, file=paste0(dropbox, resultsfile, '.rdata'))
+
+dropbox <- here::here("poli_account_followers/")
+save(res, file=paste0("/home/geev/Research/Transgression/transgressions-condemnation/Ideology/", "jason-ideologies", '.rdata'))
 
 #==============================================================================
 ## SANITY CHECKS
