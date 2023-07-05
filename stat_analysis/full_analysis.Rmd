@@ -90,49 +90,6 @@ summary(X)
 
 ```
 
-
-```{r Poisson}
-#----------------------------poisson----------------------
-
-p <- glm(Y~X, family = poisson)
-summary(p)
-
-```
-Running overdispersion test
-
-```{r dispersion - fav ~ sev}
-#--------------------------Dispersion test-------------------
-# from AER package
-
-dispersiontest(p)
-dispersiontest(p, trafo = 2)
-```
-
-This result tells us that we can't use a poisson distribution to model our data. Poission distribution assumes equal mean and variance for the data.
-
-```{r naive bayes fav ~ sev}
-#---------------------------negative binomial---------------
-negbin <- glm.nb(Y ~ X)
-summary(negbin)
-
-```
-
-```{r - hurdle poisson - fav ~ sev}
-#----------------------------hurdle (truncated poisson) model---------------
-hpossion <- hurdle(Y~X | X, link="logit", dist="poisson") # second x affect 0 or positive decision
-summary(hpossion)
-```
-
-```{r - hurdle - negbin -fav ~ sev}
-#----------------------------hurdle (truncated negative binomial) model---------------
-hpossion <- hurdle(Y~X | X, link="logit", dist="negbin") # second x affect 0 or positive decision
-summary(hpossion)
-```
-```{r - zero-inflated - poisson -fav ~ sev}
-# ----------------------------zero inflated =poisson -----------------------------------
-zip <- zeroinfl(Y~X | X, link="logit", dist="poisson")
-summary(zip)
-```
 ```{r - zero-inflated - fav ~ sev}
 #----------------------------zero inflated negative binomial----------------
 zinb <- zeroinfl(Y~X | X, link="logit", dist="negbin")
@@ -153,49 +110,6 @@ summary(X)
 
 ```
 
-
-```{r Poisson  fav ~ sev  + poli}
-#----------------------------poisson----------------------
-
-p <- glm(Y~X, family = poisson)
-summary(p)
-
-```
-Running overdispersion test
-
-```{r dispersion - fav ~ sev  + poli}
-#--------------------------Dispersion test-------------------
-# from AER package
-
-dispersiontest(p)
-dispersiontest(p, trafo = 2)
-```
-
-This result tells us that we can't use a poisson distribution to model our data. Poission distribution assumes equal mean and variance for the data.
-
-```{r naive bayes fav ~ sev  + poli}
-#---------------------------negative binomial---------------
-negbin <- glm.nb(Y ~ X)
-summary(negbin)
-
-```
-
-```{r - hurdle poisson - fav ~ sev  + poli}
-#----------------------------hurdle (truncated poisson) model---------------
-hpossion <- hurdle(Y~X | X, link="logit", dist="poisson") # second x affect 0 or positive decision
-summary(hpossion)
-```
-
-```{r - hurdle - negbin -fav ~ sev  + poli}
-#----------------------------hurdle (truncated negative binomial) model---------------
-hpossion <- hurdle(Y~X | X, link="logit", dist="negbin") # second x affect 0 or positive decision
-summary(hpossion)
-```
-```{r - zero-inflated - poisson -fav ~ sev  + poli}
-# ----------------------------zero inflated =poisson -----------------------------------
-zip <- zeroinfl(Y~X | X, link="logit", dist="poisson")
-summary(zip)
-```
 ```{r - zero-inflated - fav ~ sev + poli}
 options(mc.cores = max(parallel::detectCores() - 1, 2L))
 #memory.limit(size=32000)
@@ -213,12 +127,14 @@ summary(zinb)
 
 ## Modeling RetweetCount
 
+
+
 ### Without the political idoelogy
 
 Since we're not using poli
 
 ```{r setting IV DV for modeling - RT}
-Y = cbind(twitter_df$retweetCount)
+Y = cbind(twitter_df$retweet_count)
 colnames(Y) <- c("retweetcount")    # Applying colnames
 X = cbind(twitter_df$severity_prediction) 
 colnames(X) <- c("Severity")    # Applying colnames
@@ -229,48 +145,7 @@ summary(X)
 ```
 
 
-```{r Poisson RT}
-#----------------------------poisson----------------------
 
-p <- glm(Y~X, family = poisson)
-summary(p)
-
-```
-Running overdispersion test
-
-```{r dispersion - RT ~ sev}
-#--------------------------Dispersion test-------------------
-# from AER package
-
-dispersiontest(p)
-dispersiontest(p, trafo = 2)
-```
-
-This result tells us that we can't use a poisson distribution to model our data. Poission distribution assumes equal mean and variance for the data.
-
-```{r naive bayes RT ~ sev}
-#---------------------------negative binomial---------------
-negbin <- glm.nb(Y ~ X)
-summary(negbin)
-
-```
-
-```{r - hurdle poisson - RT ~ sev}
-#----------------------------hurdle (truncated poisson) model---------------
-hpossion <- hurdle(Y~X | X, link="logit", dist="poisson") # second x affect 0 or positive decision
-summary(hpossion)
-```
-
-```{r - hurdle - negbin -RT ~ sev}
-#----------------------------hurdle (truncated negative binomial) model---------------
-hpossion <- hurdle(Y~X | X, link="logit", dist="negbin") # second x affect 0 or positive decision
-summary(hpossion)
-```
-```{r - zero-inflated - poisson -RT ~ sev}
-# ----------------------------zero inflated =poisson -----------------------------------
-zip <- zeroinfl(Y~X | X, link="logit", dist="poisson")
-summary(zip)
-```
 ```{r - zero-inflated - RT ~ sev}
 #----------------------------zero inflated negative binomial----------------
 zinb <- zeroinfl(Y~X | X, link="logit", dist="negbin")
@@ -292,48 +167,6 @@ summary(X)
 ```
 
 
-```{r Poisson  RT ~ sev  + poli}
-#----------------------------poisson----------------------
-
-p <- glm(Y~X, family = poisson)
-summary(p)
-
-```
-Running overdispersion test
-
-```{r dispersion - RT ~ sev  + poli}
-#--------------------------Dispersion test-------------------
-# from AER package
-
-dispersiontest(p)
-dispersiontest(p, trafo = 2)
-```
-
-This result tells us that we can't use a poisson distribution to model our data. Poission distribution assumes equal mean and variance for the data.
-
-```{r naive bayes RT ~ sev  + poli}
-#---------------------------negative binomial---------------
-negbin <- glm.nb(Y ~ X)
-summary(negbin)
-
-```
-
-```{r - hurdle poisson - RT ~ sev  + poli}
-#----------------------------hurdle (truncated poisson) model---------------
-hpossion <- hurdle(Y~X | X, link="logit", dist="poisson") # second x affect 0 or positive decision
-summary(hpossion)
-```
-
-```{r - hurdle - negbin -RT ~ sev  + poli}
-#----------------------------hurdle (truncated negative binomial) model---------------
-hpossion <- hurdle(Y~X | X, link="logit", dist="negbin") # second x affect 0 or positive decision
-summary(hpossion)
-```
-```{r - zero-inflated - poisson -RT ~ sev  + poli}
-# ----------------------------zero inflated =poisson -----------------------------------
-zip <- zeroinfl(Y~X | X, link="logit", dist="poisson")
-summary(zip)
-```
 ```{r - zero-inflated - RT ~ sev + poli}
 #----------------------------zero inflated negative binomial----------------
 zinb <- zeroinfl(Y~X | X, link="logit", dist="negbin")

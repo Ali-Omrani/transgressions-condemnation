@@ -1,0 +1,110 @@
+---
+title: "downsampled_analysis"
+output: html_document
+---
+
+This notebook holds the initial analysis for Transgression Condemnation Project on the data collected by Joe et al.
+
+
+## Data Description
+
+Remember that all the tweets that were not retweets had 0 favoritesCount and retweetCount. So we decided to limit this analysis to retweets only (RT)
+
+
+Description                   | Count
+-------------                 | -------------
+All Tweets                    | 14,798,103
+Tweets                        | 4,683,905
+Retweet (RT)                      | 10,114,198
+Condemnation RT (CRT)               | 5,665,504
+Valid Time (VT) + CRT                    | 3,126,598
+Severity Rating (SR) + VT + CRT   | 3,072,275
+
+We will work on the set of SR+VT+CRT (n= 3,072,275). If we want to take political ideology into account more filtering has to be done. For each retweet we have two users. The user that has written the original tweet (RT_user_id) and the user that has retweeted the original tweet (user_id). Recall that for political ideology estimation we need the users to follow some political accounts. Here I've se the threshold to users following only one political account. Remember that as of now I don't have data only for  460 political accounts (out of the 613)
+
+Description                   | Count
+-------------                 | -------------
+Unique user_ids in SR + VT + CRT                     | 776,698
+Unique user_ids in SR + VT + CRT who follow at least one political account (from 460) | 210,872
+retweets in SR+VT+CRT from user_ids who follow at least one political account | 1,299,095
+Unique RT_user_ids in SR + VT + CRT                     | 73,573
+Unique RT_user_ids in SR + VT + CRT who follow at least one political account (from 460) | 24,003
+retweets in SR+VT+CRT from user_ids who follow at least one political account | 1,753,565
+
+
+
+```{r loading data and libraries }
+twitter_file = "../data/jason_condemnation_tweets.csv"
+user_id_ideology_file = "../Ideology/new-jason-ideologies.rdata"
+ambig_file = "../../data/20230302 ambiguity summary data.csv"
+#RT_user_id_ideology_file = "../data/RT_user_id_political_ideologies.rdata"
+
+library(ggplot2)
+library(MASS)
+library(dplyr)
+library(glmmTMB)
+library(AER)
+library(pscl)
+# -----------------------------loading data------------------------------
+twitter_df = read.csv(twitter_file)
+frac = 0.2
+ambig_df = read.csv(ambig_file)
+
+#load(RT_user_id_ideology_file)
+#RT_user_ideologies <- res
+load(user_id_ideology_file)
+og_user_ideologies <- res
+
+user_ideology_estimates = og_user_ideologies$rowcoord[,1]
+user_ids = og_user_ideologies$rownames
+#RT_user_ideology_estimates = RT_user_ideologies$rowcoord[,1]
+#RT_user_ids = RT_user_ideologies$rownames
+
+user_ideology_df = data.frame(user_ideology_estimates, user_ids)
+#RT_user_ideology_df = data.frame(RT_user_ideology_estimates, RT_user_ids)
+
+
+names(user_ideology_df)[2]<- "user_id"
+names(ambig_df)[names(ambig_df) == "target_name"] <- "target"
+
+twitter_df <- merge(twitter_df,user_ideology_df,by.x = "user_id")
+twitter_df <- merge(twitter_df,ambig_df,by.x = "target")
+#downsampled_df <- twitter_df %>% sample_frac(size = frac, replace = FALSE)
+#twitter_df <-downsampled_df
+
+
+
+library(caret)
+
+# set the seed for reproducibility
+set.seed(123)
+
+# use createDataPartition to get the indices of the downsampled data
+downsample_indices <- createDataPartition(twitter_df$target, times = 1, p = 0.1, list = FALSE)
+
+# subset the original dataframe using the downsampled indices
+downsampled_df <- twitter_df[downsample_indices,]
+
+```
+```{r - zero-inflated - fav ~ sev}
+Y = cbind(downsampled_df$favorite_count)
+colnames(Y) <- c("favorite_count")    # Applying colnames
+X = cbind(downsampled_df$severity_prediction) 
+colnames(X) <- c("Severity")    # Applying colnames
+summary(Y)
+summary(X)
+zinb <- zeroinfl(Y~X | X, link="logit", dist="negbin")
+summary(zinb)
+```
+```{r -multilevel}
+
+# load the glmmTMB package
+library(glmmTMB)
+
+# fit a multi-level regression model with ZINB distribution
+my_model <- glmmTMB(count ~ predictor1 + predictor2 + (1 | grouping_variable), data = my_data, family = zinb())
+
+# print the model summary
+summary(my_model)
+
+```
