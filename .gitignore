@@ -8,8 +8,17 @@ __pycache__/
 severity/data
 *.p
 *.txt
+*.Rda
+*.zip
 severity/severity_dumps
 *.csv
+*.rdata
+*.swp
+*.Rhistory
+*.DS_Store
+severity/test_trainer
+condemnation/test_trainer
+data/
 # C extensions
 *.so
 

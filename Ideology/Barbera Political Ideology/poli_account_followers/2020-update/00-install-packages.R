@@ -39,16 +39,18 @@ install_github("pablobarbera/twitter_ideology/pkg/tweetscores")
 #and access token secret below
 
 library(ROAuth)
-my_oauth <- list(consumer_key = "CONSUMER_KEY",
-                 consumer_secret = "CONSUMER_SECRET",
-                 access_token="ACCESS_TOKEN",
-                 access_token_secret = "ACCESS_TOKEN_SECRET")
+auth_info = read.csv("./twitter_app_aouth - Sheet1.csv")
+i = 1
+my_oauth <- list(consumer_key = auth_info$consumer_key[i],
+                 consumer_secret = auth_info$consumer_secret[i],
+                 access_token=auth_info$access_token[i],
+                 access_token_secret = auth_info$access_token_secret[i])
 
 ## Setting working folder
 ## From windows machine usually this works
 # setwd("H:\\credentials\\twitter")
 ## From Mac computer, something like...
-setwd("~/Dropbox/credentials/twitter/")
+#setwd("~/Dropbox/credentials/twitter/")
 
 ## now you can save oauth token for use in future sessions with twitteR or streamR
 save(my_oauth, file="my_oauth")
